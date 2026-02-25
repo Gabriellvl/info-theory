@@ -3,7 +3,7 @@ import math
 import struct
 import wave
 import numpy as np
-from playsound import playsound
+# from playsound import playsound
 from reedsolo import RSCodec
 
 class AudioCD:
@@ -53,11 +53,11 @@ class AudioCD:
             value_packed = struct.pack('<h', max(min(32767,value),-32768))
             wave_object.writeframesraw(value_packed)
         wave_object.close()
-        if bool_play:
-            try:
-                playsound(wav_file)
-            except:
-                pass
+        # if bool_play:
+        #     try:
+        #         playsound(wav_file)
+        #     except:
+        #         pass
 
         pass
 
