@@ -345,7 +345,19 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        # insert your code here
+        input = input.astype("B")
+        output = np.zeros(int(n_frames * 28), dtype="B")
+        INPUT_SYMBOLS_PER_FRAME = 24
+        OUTPUT_SYMBOLS_PER_FRAME = 28
+
+        for i in range(int(n_frames)):
+            encoded = self.rsc1.encode(
+                input[(i) * INPUT_SYMBOLS_PER_FRAME : (i + 1) * INPUT_SYMBOLS_PER_FRAME]
+            )
+            encoded = list(encoded)
+            output[
+                (i) * OUTPUT_SYMBOLS_PER_FRAME : (i + 1) * OUTPUT_SYMBOLS_PER_FRAME
+            ] = encoded
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
@@ -499,7 +511,43 @@ class AudioCD:
             and type(erasure_flags_in) is np.ndarray
         ), "erasure_flags_in must be a 1D numpy array"
 
-        # insert your code here
+        OUTPUT_SYMBOLS_PER_FRAME = 24
+        INPUT_SYMBOLS_PER_FRAME = 28
+
+        input = input.astype("B")
+        output = np.zeros(int(n_frames * OUTPUT_SYMBOLS_PER_FRAME), dtype="B")
+        erasure_flags_out = np.zeros(int(n_frames * OUTPUT_SYMBOLS_PER_FRAME))
+        for i in range(int(n_frames)):
+            try:
+                (decoded, _, err) = self.rsc3.decode(
+                    input[
+                        (i)
+                        * INPUT_SYMBOLS_PER_FRAME : (i + 1)
+                        * INPUT_SYMBOLS_PER_FRAME
+                    ],
+                    erase_pos=None,
+                )
+                ERR = len(err)
+                output_dec = list(decoded)
+                output_dec = output_dec[-OUTPUT_SYMBOLS_PER_FRAME:]
+            except Exception as e:
+                ERR = -1
+                output_dec = input[
+                    (i) * INPUT_SYMBOLS_PER_FRAME : (i) * INPUT_SYMBOLS_PER_FRAME
+                    + OUTPUT_SYMBOLS_PER_FRAME
+                ]
+
+            if ERR == -1:
+                output[
+                    (i) * OUTPUT_SYMBOLS_PER_FRAME : (i + 1) * OUTPUT_SYMBOLS_PER_FRAME
+                ] = output_dec
+                erasure_flags_out[
+                    (i) * OUTPUT_SYMBOLS_PER_FRAME : (i + 1) * OUTPUT_SYMBOLS_PER_FRAME
+                ] = 1
+            else:
+                output[
+                    (i) * OUTPUT_SYMBOLS_PER_FRAME : (i + 1) * OUTPUT_SYMBOLS_PER_FRAME
+                ] = output_dec
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray

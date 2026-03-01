@@ -89,5 +89,21 @@ def test_C3_enc_dec_8_parity_with_bit_errors():
             assert np.array_equal(input_data, decoded_data)
 
 
+def test_CIRC_enc_C2_basic():
+    """Test CIRC_enc_C2 with single frame"""
+    audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
+    input_data = np.random.randint(0, 256, 24, dtype=np.uint8)
+    n_frames = 1
+
+    output, output_frames = audio_cd.CIRC_enc_C2(input_data, n_frames)
+    print("Input Data:", input_data)
+    print("Output Data:", output)
+    print("Output Frames:", output_frames)
+
+    assert output.shape == (28,)
+    assert output_frames == 1
+    assert output.dtype == np.uint8
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
