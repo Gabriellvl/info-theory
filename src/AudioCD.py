@@ -519,13 +519,13 @@ class AudioCD:
         erasure_flags_out = np.zeros(int(n_frames * OUTPUT_SYMBOLS_PER_FRAME))
         for i in range(int(n_frames)):
             try:
-                (decoded, _, err) = self.rsc3.decode(
+                (decoded, _, err) = self.rsc1.decode(
                     input[
                         (i)
                         * INPUT_SYMBOLS_PER_FRAME : (i + 1)
                         * INPUT_SYMBOLS_PER_FRAME
                     ],
-                    erase_pos=None,
+                    erase_pos=erasure_flags_in,
                 )
                 ERR = len(err)
                 output_dec = list(decoded)
