@@ -790,3 +790,35 @@ class AudioCD:
         )
 
         pass
+
+    def _generic_encode(
+        self,
+        input,
+        n_frames,
+        encoder,
+        input_symbols_per_frame,
+        output_symbols_per_frame,
+    ):
+        """
+        Generic function to encode a frame using the provided encoder
+        """
+        assert (
+            len(np.shape(input)) == 1 and type(input) is np.ndarray
+        ), "input must be a 1D numpy array"
+
+        input = input.astype("B")
+        output = np.zeros(int(n_frames * output_symbols_per_frame), dtype="B")
+
+        for i in range(int(n_frames)):
+            encoded = encoder.encode(
+                input[(i) * input_symbols_per_frame : (i + 1) * input_symbols_per_frame]
+            )
+            encoded = list(encoded)
+            output[
+                (i) * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+            ] = encoded
+
+        assert (
+            len(np.shape(output)) == 1 and type(output) is np.ndarray
+        ), "output must be a 1D numpy array"
+        return (output, n_frames)
