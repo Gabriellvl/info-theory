@@ -12,7 +12,9 @@
 ## 5.3 Audio encoding in CDs
 
 1 Milan mee bezig
-2
+
+2 Milan mee bezig
+
 3
 4
 5
