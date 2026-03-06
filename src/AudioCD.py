@@ -558,7 +558,7 @@ class AudioCD:
         ), "output must be a 1D numpy array"
         return (output, n_frames)
 
-    def old_C3_dec_8_parity(self, input, n_frames):
+    def pC3_dec_8_parity(self, input, n_frames):
         # Configuration 3: Decoder
         # Input:
         #  -input: the input of this block (1D numpy array)
@@ -570,7 +570,7 @@ class AudioCD:
         assert (
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
-
+        
         input = input.astype("B")
         output = np.zeros(int(n_frames * 24), dtype="B")
         erasure_flags_out = np.zeros(int(n_frames * 24))
@@ -583,12 +583,14 @@ class AudioCD:
                 output_dec = list(decoded)
                 output_dec = output_dec[-24:]
             except Exception as e:
+                print("Error in frame " + str(i) + ": " + repr(e))
                 ERR = -1
                 output_dec = input[(i) * 32 : (i) * 32 + 24]
 
             if ERR == -1:
                 output[(i) * 24 : (i + 1) * 24] = output_dec
                 erasure_flags_out[(i) * 24 : (i + 1) * 24] = 1
+                assert 0
             else:
                 output[(i) * 24 : (i + 1) * 24] = output_dec
 
