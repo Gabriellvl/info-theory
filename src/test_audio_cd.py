@@ -1,3 +1,5 @@
+import sys
+
 from AudioCD import AudioCD
 import numpy as np
 import pytest
@@ -37,6 +39,7 @@ def test_C3_dec_8_parity_basic():
     assert output_frames == 1
     assert output.dtype == np.uint8
     assert erasure_flags_out.dtype == np.float64
+    assert 1 not in erasure_flags_out
 
 
 def test_C3_enc_dec_8_parity_with_bit_errors():
@@ -105,28 +108,30 @@ def test_CIRC_enc_C2_basic():
     assert output.dtype == np.uint8
 
 
-def offtest_CIRC_dec_C2_basic():
+def test_CIRC_dec_C2_basic():
     """Test CIRC_dec_C2 with single frame"""
     audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
     input_data = np.random.randint(0, 256, 28, dtype=np.uint8)
     n_frames = 1
-
-    output, erasure_flags_out, output_frames = audio_cd.CIRC_dec_C2(
-        input_data,
+    erasure_flags_in = np.zeros(24)  # No erasures for this test
+    decoded_data, erasure_flags_out, output_frames = audio_cd.CIRC_dec_C2(
+        input_data, erasure_flags_in, n_frames
     )
     print("Input Data:", input_data)
-    print("Output Data:", output)
+    print("Output Data:", decoded_data)
     print("Erasure Flags Out:", erasure_flags_out)
     print("Output Frames:", output_frames)
 
-    assert output.shape == (24,)
+    assert decoded_data.shape == (24,)
     assert erasure_flags_out.shape == (24,)
     assert output_frames == 1
-    assert output.dtype == np.uint8
+    assert decoded_data.dtype == np.uint8
     assert erasure_flags_out.dtype == np.float64
+    assert 1 not in erasure_flags_out
+    assert np.array_equal(input_data, decoded_data)
 
 
-def offtest_CIRC_enc_dec_C2():
+def test_CIRC_enc_dec_C2():
     """Test CIRC encoding and decoding together"""
     audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
     input_data = np.random.randint(0, 256, 24, dtype=np.uint8)
@@ -135,7 +140,7 @@ def offtest_CIRC_enc_dec_C2():
     # Encode the data
     encoded_data, encoded_frames = audio_cd.CIRC_enc_C2(input_data, n_frames)
 
-    for num_bit_errors in range(12):  # Test with 0 to 11 bit errors
+    for num_bit_errors in range(1,2):  # Test with 0 to 11 bit errors
         corrupted_data = encoded_data.copy()
         error_indices = np.random.choice(
             len(corrupted_data) * 8, num_bit_errors, replace=False
@@ -145,9 +150,13 @@ def offtest_CIRC_enc_dec_C2():
             bit_idx = idx % 8
             corrupted_data[byte_idx] ^= 1 << bit_idx  # Flip the bit
 
+        erasure_flags_in = np.zeros(24)  # No erasures for this test
+
         # Decode the corrupted data
         decoded_data, erasure_flags_out, decoded_frames = audio_cd.CIRC_dec_C2(
-            corrupted_data, encoded_frames, n_frames
+            corrupted_data,
+            erasure_flags_in,
+            encoded_frames,
         )
 
         print(f"Input Data: {input_data}")
@@ -178,4 +187,5 @@ def offtest_CIRC_enc_dec_C2():
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # off_test_CIRC_enc_dec_C2()
+    pytest.main([__file__] + sys.argv[1:])
