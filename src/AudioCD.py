@@ -485,14 +485,15 @@ class AudioCD:
         assert (
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
-        assert (
-            len(np.shape(erasure_flags_in)) == 1
-            and type(erasure_flags_in) is np.ndarray
-        ), "erasure_flags_in must be a 1D numpy array"
+        # assert (
+        #     len(np.shape(erasure_flags_in)) == 1
+        #     and type(erasure_flags_in) is np.ndarray
+        # ), "erasure_flags_in must be a 1D numpy array"
 
         output, erasure_flags_out, n_frames_return = self._generic_decode(
             input, n_frames, self.rsc2, 28, 24, erasure_flags_in
         )
+
         assert n_frames_return == n_frames
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
@@ -558,7 +559,7 @@ class AudioCD:
         ), "output must be a 1D numpy array"
         return (output, n_frames)
 
-    def pC3_dec_8_parity(self, input, n_frames):
+    def old_C3_dec_8_parity(self, input, n_frames):
         # Configuration 3: Decoder
         # Input:
         #  -input: the input of this block (1D numpy array)
@@ -570,7 +571,7 @@ class AudioCD:
         assert (
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
-        
+
         input = input.astype("B")
         output = np.zeros(int(n_frames * 24), dtype="B")
         erasure_flags_out = np.zeros(int(n_frames * 24))
@@ -788,7 +789,6 @@ class AudioCD:
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
         return (output, n_frames)
-
     def _generic_decode(
         self,
         input,
@@ -798,51 +798,39 @@ class AudioCD:
         output_symbols_per_frame,
         erasure_flags_in=None,
     ):
-        """
-        Generic function to encode a frame using the provided encoder
-        """
-
         input = input.astype("B")
         output = np.zeros(int(n_frames * output_symbols_per_frame), dtype="B")
         erasure_flags_out = np.zeros(int(n_frames * output_symbols_per_frame))
+        
         for i in range(int(n_frames)):
+            # Convert erasure flag array to list of erased positions within this frame
+            if erasure_flags_in is not None:
+                frame_flags = erasure_flags_in[
+                    i * input_symbols_per_frame : (i + 1) * input_symbols_per_frame
+                ]
+                erase_pos = list(np.where(frame_flags != 0)[0])
+            else:
+                erase_pos = []
+            
             try:
                 (decoded, _, err) = encoder.decode(
                     input[
-                        (i)
-                        * input_symbols_per_frame : (i + 1)
-                        * input_symbols_per_frame
+                        i * input_symbols_per_frame : (i + 1) * input_symbols_per_frame
                     ],
-                    erase_pos=erasure_flags_in,
+                    erase_pos=erase_pos if erase_pos else None,
                 )
                 ERR = len(err)
                 output_dec = list(decoded)
                 output_dec = output_dec[-output_symbols_per_frame:]
             except Exception as _:
                 ERR = -1
-                output_dec = input[
-                    (i) * input_symbols_per_frame : (i) * input_symbols_per_frame
+                output_dec = list(input[
+                    i * input_symbols_per_frame : i * input_symbols_per_frame
                     + output_symbols_per_frame
-                ]
+                ])
 
             if ERR == -1:
-                output[
-                    (i) * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = output_dec
-                erasure_flags_out[
-                    (i) * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = 1
+                output[i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame] = output_dec
+                erasure_flags_out[i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame] = 1
             else:
-                output[
-                    (i) * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = output_dec
-
-        assert (
-            len(np.shape(output)) == 1 and type(output) is np.ndarray
-        ), "output must be a 1D numpy array"
-        assert (
-            len(np.shape(erasure_flags_out)) == 1
-            and type(erasure_flags_out) is np.ndarray
-        ), "erasure_flags_out must be a 1D numpy array"
-        print("Erasure flags in this frame: ", erasure_flags_out)
-        return (output, erasure_flags_out, n_frames)
+                output[i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame] = output_dec

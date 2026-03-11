@@ -20,7 +20,7 @@ def test_C3_enc_8_parity_basic():
     assert output.dtype == np.uint8
 
 
-def offtest_C3_dec_8_parity_basic():
+def ptest_C3_dec_8_parity_basic():
     """Test C3_dec_8_parity with single frame"""
     audio_cd = AudioCD(Fs=44100, configuration=3, max_interpolation=8)
     input_data = np.random.randint(0, 256, 32, dtype=np.uint8)
@@ -135,7 +135,7 @@ def offtest_CIRC_dec_C2_basic():
     assert np.array_equal(input_data, decoded_data)
 
 
-def offtest_CIRC_enc_dec_C2():
+def test_CIRC_enc_dec_C2():
     """Test CIRC encoding and decoding together"""
     audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
     input_data = np.random.randint(0, 256, 24, dtype=np.uint8)
@@ -155,7 +155,7 @@ def offtest_CIRC_enc_dec_C2():
             corrupted_data[byte_idx] ^= 1 << bit_idx  # Flip the bit
 
         erasure_flags_in = np.zeros(28)  # No erasures for this test
-
+        # erasure_flags_in = None
         # Decode the corrupted data
         decoded_data, erasure_flags_out, decoded_frames = audio_cd.CIRC_dec_C2(
             corrupted_data,
