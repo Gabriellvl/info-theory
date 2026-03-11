@@ -432,7 +432,9 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        # insert your code here
+        output, erasure_flags_out, n_frames_return = self._generic_decode(
+            input, n_frames, self.rsc1, 32, 28, None
+        )
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
@@ -441,7 +443,7 @@ class AudioCD:
             len(np.shape(erasure_flags_out)) == 1
             and type(erasure_flags_out) is np.ndarray
         ), "erasure_flags_out must be a 1D numpy array"
-        return (output, erasure_flags_out, n_frames)
+        return (output, erasure_flags_out, n_frames_return)
 
     def CIRC_dec_delay_unequal(self, input, erasure_flags_in, n_frames):
         # CIRC Decoder: Delay lines of unequal length

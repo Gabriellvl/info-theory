@@ -19,6 +19,7 @@ def test_C3_enc_8_parity_basic():
     assert output_frames == n_frames
     assert output.dtype == np.uint8
 
+
 def introduce_bit_errors(data, n_frames, num_bit_errors, frame_size=32):
     """Introduce random bit errors into data"""
     corrupted_data = data.copy()
@@ -88,11 +89,12 @@ def test_CIRC_enc_C2_basic():
     assert output_frames == 1
     assert output.dtype == np.uint8
 
+
 def test_CIRC_enc_dec_C2():
     """Test CIRC encoding and decoding together"""
     audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
-    input_data = np.random.randint(0, 256, 24, dtype=np.uint8)
-    n_frames = 1
+    n_frames = 2
+    input_data = np.random.randint(0, 256, 24 * n_frames, dtype=np.uint8)
 
     # Encode the data
     encoded_data, encoded_frames = audio_cd.CIRC_enc_C2(input_data, n_frames)
@@ -126,11 +128,11 @@ def test_CIRC_enc_dec_C2():
         print(f"Number of Bit Errors: {num_bit_errors}")
 
         # Assertions
-        assert encoded_data.shape == (28,)
-        assert encoded_frames == 1
-        assert decoded_data.shape == (24,)
-        assert decoded_frames == 1
-        assert erasure_flags_out.shape == (24,)
+        assert encoded_data.shape == (28 * n_frames,)
+        assert encoded_frames == n_frames
+        assert decoded_data.shape == (24 * n_frames,)
+        assert decoded_frames == n_frames
+        assert erasure_flags_out.shape == (24 * n_frames,)
         assert erasure_flags_out.dtype == np.float64
 
         if num_bit_errors == -1:
@@ -141,6 +143,54 @@ def test_CIRC_enc_dec_C2():
         else:
             assert 1 not in erasure_flags_out
             assert np.array_equal(input_data, decoded_data)
+
+
+def test_CIRC_enc_dec_C1():
+    """Test C1 encoding and decoding together"""
+    audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
+    n_frames = 2
+    input_data = np.random.randint(0, 256, 28 * n_frames, dtype=np.uint8)
+
+    # Encode
+    encoded_data, encoded_frames = audio_cd.CIRC_enc_C1(input_data, n_frames)
+
+    assert encoded_data.shape == (
+        32 * n_frames,
+    ), f"Expected (32,), got {encoded_data.shape}"
+    assert encoded_frames == n_frames
+
+    for num_byte_errors in range(3):  # RS(32,28) can correct up to 2 symbol errors
+        corrupted_data = encoded_data.copy()
+        error_indices = np.random.choice(
+            len(corrupted_data), num_byte_errors, replace=False
+        )
+        for idx in error_indices:
+            corrupted_data[idx] ^= np.random.randint(1, 256)  # Flip random bits in byte
+
+        decoded_data, erasure_flags_out, decoded_frames = audio_cd.CIRC_dec_C1(
+            corrupted_data,
+            n_frames,
+        )
+
+        print(f"\n--- num_byte_errors={num_byte_errors} ---")
+        print(f"Input Data:      {input_data}")
+        print(f"Encoded Data:    {encoded_data}")
+        print(f"Corrupted Data:  {corrupted_data}")
+        print(f"Decoded Data:    {decoded_data}")
+        print(f"Erasure Flags:   {erasure_flags_out}")
+
+        assert decoded_data.shape == (
+            28 * n_frames,
+        ), f"Expected (28,), got {decoded_data.shape}"
+        assert decoded_frames == n_frames
+        assert erasure_flags_out.shape == (28 * n_frames,)
+        assert erasure_flags_out.dtype == np.float64
+
+        if num_byte_errors <= 2:
+            assert np.array_equal(input_data, decoded_data)
+            assert 1 not in erasure_flags_out
+        elif num_byte_errors >= 3:
+            assert 0 not in erasure_flags_out
 
 
 if __name__ == "__main__":
