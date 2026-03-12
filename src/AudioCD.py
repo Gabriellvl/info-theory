@@ -9,7 +9,6 @@ from reedsolo import RSCodec
 
 
 class AudioCD:
-
     def __init__(self, Fs, configuration, max_interpolation):
         self.Fs = Fs  # Sample rate of the audio
         self.max_interpolation = (
@@ -341,7 +340,7 @@ class AudioCD:
         delayed_2d = np.zeros((n_frames + DELAY_FRAMES, SYMBOLS_PER_FRAME))
         output_2d = np.zeros((n_frames + DELAY_FRAMES, SYMBOLS_PER_FRAME))
         for i in range(SYMBOLS_PER_FRAME):
-            if ((i // 4)) % 2 == 1:
+            if (i // 4) % 2 == 1:
                 delayed_2d[:-DELAY_FRAMES, i] = input_2d[:, i]
             else:
                 delayed_2d[DELAY_FRAMES:, i] = input_2d[:, i]
@@ -567,15 +566,17 @@ class AudioCD:
             deinterleaved_erasure_flags_in_2d[:, i] = erasure_flags_in_2d[
                 :, AudioCD.get_new_index_interleave(i)
             ]
-
         for i in range(SYMBOLS_PER_FRAME):
-            if ((i // 4)) % 2 == 1:
-                output_2d[:, i] = input_2d[DELAY_FRAMES:, i]
+            if (i // 4) % 2 == 1:
+                output_2d[:, i] = deinterleaved_input_2d[:-DELAY_FRAMES, i]
+                erasure_flags_out_2d[:, i] = deinterleaved_erasure_flags_in_2d[
+                    :-DELAY_FRAMES, i
+                ]
+            else:
+                output_2d[:, i] = deinterleaved_input_2d[DELAY_FRAMES:, i]
                 erasure_flags_out_2d[:, i] = deinterleaved_erasure_flags_in_2d[
                     DELAY_FRAMES:, i
                 ]
-            else:
-                output_2d[:, i] = input_2d[:-DELAY_FRAMES, i]
 
         output = output_2d.flatten()
         erasure_flags_out = erasure_flags_out_2d.flatten()
@@ -803,12 +804,12 @@ class AudioCD:
         cd.save_and_play_music(out[:, 0], out[:, 1], "test.wav", 0)
         print("end")
 
-        print(f"Number samples with erasure flags: {np.sum(interpolation_flags!=0)}")
+        print(f"Number samples with erasure flags: {np.sum(interpolation_flags != 0)}")
         print(
-            f"Number samples with failed interpolations: {np.sum(interpolation_flags==-1)}"
+            f"Number samples with failed interpolations: {np.sum(interpolation_flags == -1)}"
         )
         print(
-            f"Number undetected errors: {np.sum(out[interpolation_flags==0] != cd.scaled_quantized_padded_original[interpolation_flags==0])}"
+            f"Number undetected errors: {np.sum(out[interpolation_flags == 0] != cd.scaled_quantized_padded_original[interpolation_flags == 0])}"
         )
 
         pass

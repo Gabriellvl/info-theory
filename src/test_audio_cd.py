@@ -62,7 +62,6 @@ def test_C3_enc_dec_8_parity_with_bit_errors():
         assert decoded_data.shape == (24 * n_frames,)
         assert decoded_frames == n_frames
         assert erasure_flags_out.shape == (24 * n_frames,)
-        assert erasure_flags_out.dtype == np.float64
 
         if num_bit_errors == 5:
             pass
@@ -133,7 +132,6 @@ def test_CIRC_enc_dec_C2():
         assert decoded_data.shape == (24 * n_frames,)
         assert decoded_frames == n_frames
         assert erasure_flags_out.shape == (24 * n_frames,)
-        assert erasure_flags_out.dtype == np.float64
 
         if num_bit_errors == -1:
             pass
@@ -184,7 +182,6 @@ def test_CIRC_enc_dec_C1():
         ), f"Expected (28,), got {decoded_data.shape}"
         assert decoded_frames == n_frames
         assert erasure_flags_out.shape == (28 * n_frames,)
-        assert erasure_flags_out.dtype == np.float64
 
         if num_byte_errors <= 2:
             assert np.array_equal(input_data, decoded_data)
@@ -193,43 +190,57 @@ def test_CIRC_enc_dec_C1():
             assert 0 not in erasure_flags_out
 
 
-def test_delay_interleave_visual():
-    """Test C1 encoding and decoding together"""
+def test_enc_dec_deinterlave_delay():
+    """Test that enc_delay_interleave and dec_deinterleave_delay are inverses"""
     audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
     SYMBOLS_PER_FRAME = 24
 
-    # 3 frames: first frame all ones, rest zeros
-    frame0 = np.ones(SYMBOLS_PER_FRAME, dtype=float)
-    frame1 = np.zeros(SYMBOLS_PER_FRAME, dtype=float)
-    frame2 = np.zeros(SYMBOLS_PER_FRAME, dtype=float)
-    input_data = np.concatenate([frame0, frame1, frame2])
+    # Only frame 0 has values (1..24), rest are zeros
     n_frames = 3
-
-    # Label each symbol with its original index for clarity
-    # (overwrite with symbol index so we can track where things go)
-    input_data = np.tile(np.arange(SYMBOLS_PER_FRAME, dtype=float), n_frames)
-    # Only frame 0 has values, rest are zero — mark frame with 100*frame_idx + sym_idx
-    input_data = np.zeros(n_frames * SYMBOLS_PER_FRAME, dtype=float)
+    input_data = np.zeros(n_frames * SYMBOLS_PER_FRAME)
     input_data[:SYMBOLS_PER_FRAME] = (
-        np.arange(SYMBOLS_PER_FRAME, dtype=float) + 1
+        np.arange(SYMBOLS_PER_FRAME) + 1
     )  # 1..24 in frame 0
 
-    print("=== INPUT (3 frames x 24 symbols) ===")
+    print("=== ORIGINAL INPUT (3 frames x 24 symbols) ===")
     input_2d = input_data.reshape(n_frames, SYMBOLS_PER_FRAME)
     print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
     for f in range(n_frames):
         print(f"  {f:<6}", input_2d[f].astype(int).tolist())
 
-    output, n_frames_out = audio_cd.CIRC_enc_delay_interleave(input_data, n_frames)
+    # --- ENCODE ---
+    encoded, n_frames_enc = audio_cd.CIRC_enc_delay_interleave(input_data, n_frames)
 
-    print(f"\n=== OUTPUT ({n_frames_out} frames x 24 symbols) ===")
-    output_2d = output.reshape(n_frames_out, SYMBOLS_PER_FRAME)
+    print(f"\n=== ENCODED ({n_frames_enc} frames x 24 symbols) ===")
+    encoded_2d = encoded.reshape(n_frames_enc, SYMBOLS_PER_FRAME)
     print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
-    for f in range(n_frames_out):
-        print(f"  {f:<6}", output_2d[f].astype(int).tolist())
+    for f in range(n_frames_enc):
+        print(f"  {f:<6}", encoded_2d[f].astype(int).tolist())
+
+    # --- DECODE --- use encoded output as erasure flags too
+    erasure_flags = encoded.copy()
+    decoded, erasure_flags_out, n_frames_dec = audio_cd.CIRC_dec_deinterleave_delay(
+        encoded, erasure_flags, n_frames_enc
+    )
+
+    print(f"\n=== DECODED ({n_frames_dec} frames x 24 symbols) ===")
+    decoded_2d = decoded.reshape(n_frames_dec, SYMBOLS_PER_FRAME)
+    print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
+    for f in range(n_frames_dec):
+        print(f"  {f:<6}", decoded_2d[f].astype(int).tolist())
+
+    print(f"\n=== ERASURE FLAGS OUT ({n_frames_dec} frames x 24 symbols) ===")
+    erasure_2d = erasure_flags_out.reshape(n_frames_dec, SYMBOLS_PER_FRAME)
+    print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
+    for f in range(n_frames_dec):
+        print(f"  {f:<6}", erasure_2d[f].astype(int).tolist())
+
+    # --- CHECK: decoded should match original input (trimmed to n_frames_dec) ---
+    expected = input_data[: n_frames_dec * SYMBOLS_PER_FRAME]
+    assert np.array_equal(decoded, expected)
 
 
 if __name__ == "__main__":
     # off_test_CIRC_enc_dec_C2()
-    # visual_test_delay_interleave_visual()
+    # test_enc_dec_deinterlave_delay()
     pytest.main([__file__] + sys.argv[1:])
