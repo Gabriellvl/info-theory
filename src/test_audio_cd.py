@@ -193,6 +193,43 @@ def test_CIRC_enc_dec_C1():
             assert 0 not in erasure_flags_out
 
 
+def test_delay_interleave_visual():
+    """Test C1 encoding and decoding together"""
+    audio_cd = AudioCD(Fs=44100, configuration=1, max_interpolation=8)
+    SYMBOLS_PER_FRAME = 24
+
+    # 3 frames: first frame all ones, rest zeros
+    frame0 = np.ones(SYMBOLS_PER_FRAME, dtype=float)
+    frame1 = np.zeros(SYMBOLS_PER_FRAME, dtype=float)
+    frame2 = np.zeros(SYMBOLS_PER_FRAME, dtype=float)
+    input_data = np.concatenate([frame0, frame1, frame2])
+    n_frames = 3
+
+    # Label each symbol with its original index for clarity
+    # (overwrite with symbol index so we can track where things go)
+    input_data = np.tile(np.arange(SYMBOLS_PER_FRAME, dtype=float), n_frames)
+    # Only frame 0 has values, rest are zero — mark frame with 100*frame_idx + sym_idx
+    input_data = np.zeros(n_frames * SYMBOLS_PER_FRAME, dtype=float)
+    input_data[:SYMBOLS_PER_FRAME] = (
+        np.arange(SYMBOLS_PER_FRAME, dtype=float) + 1
+    )  # 1..24 in frame 0
+
+    print("=== INPUT (3 frames x 24 symbols) ===")
+    input_2d = input_data.reshape(n_frames, SYMBOLS_PER_FRAME)
+    print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
+    for f in range(n_frames):
+        print(f"  {f:<6}", input_2d[f].astype(int).tolist())
+
+    output, n_frames_out = audio_cd.CIRC_enc_delay_interleave(input_data, n_frames)
+
+    print(f"\n=== OUTPUT ({n_frames_out} frames x 24 symbols) ===")
+    output_2d = output.reshape(n_frames_out, SYMBOLS_PER_FRAME)
+    print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
+    for f in range(n_frames_out):
+        print(f"  {f:<6}", output_2d[f].astype(int).tolist())
+
+
 if __name__ == "__main__":
     # off_test_CIRC_enc_dec_C2()
+    # visual_test_delay_interleave_visual()
     pytest.main([__file__] + sys.argv[1:])

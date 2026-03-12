@@ -313,6 +313,13 @@ class AudioCD:
         ), "interpolation_flags must be a 2D numpy array with 2 columns"
         return (audio_out, interpolation_flags)
 
+    @staticmethod
+    def get_new_index_interleave(old_index):
+        SHIFT_TABLE = [0, 3, 6, 9, 1, 4, 7, 10, 2, 5, 8, 11]
+        shift_table_index = old_index // 2
+        double_word_shift = SHIFT_TABLE[shift_table_index]
+        return double_word_shift * 2 + old_index % 2
+
     def CIRC_enc_delay_interleave(self, input, n_frames):
         # CIRC Encoder: Delay of 2 frames + interleaving sequence
         # Input:
@@ -325,12 +332,27 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        # insert your code here
+        SYMBOLS_PER_FRAME = 24
+        DELAY_FRAMES = 2
 
+        # Output has 2 extra frames due to the delay on even symbols
+        n_frames_out = n_frames + DELAY_FRAMES
+        input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
+        delayed_2d = np.zeros((n_frames + DELAY_FRAMES, SYMBOLS_PER_FRAME))
+        output_2d = np.zeros((n_frames + DELAY_FRAMES, SYMBOLS_PER_FRAME))
+        for i in range(SYMBOLS_PER_FRAME):
+            if ((i // 4)) % 2 == 1:
+                delayed_2d[:-DELAY_FRAMES, i] = input_2d[:, i]
+            else:
+                delayed_2d[DELAY_FRAMES:, i] = input_2d[:, i]
+
+        for i in range(SYMBOLS_PER_FRAME):
+            output_2d[:, AudioCD.get_new_index_interleave(i)] = delayed_2d[:, i]
+        output = output_2d.flatten()
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
-        return (output, n_frames)
+        return (output, n_frames_out)
 
     def CIRC_enc_C2(self, input, n_frames):
         # CIRC Encoder: Generation of 4 parity symbols (C2)
@@ -523,8 +545,40 @@ class AudioCD:
             and type(erasure_flags_in) is np.ndarray
         ), "erasure_flags_in must be a 1D numpy array"
 
-        # insert your code here
+        assert (
+            len(np.shape(input)) == 1 and type(input) is np.ndarray
+        ), "input must be a 1D numpy array"
 
+        SYMBOLS_PER_FRAME = 24
+        DELAY_FRAMES = 2
+
+        # Output has 2 extra frames due to the delay on even symbols
+        n_frames_out = n_frames - DELAY_FRAMES
+        input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
+        erasure_flags_in_2d = erasure_flags_in.reshape(n_frames, SYMBOLS_PER_FRAME)
+        deinterleaved_input_2d = np.zeros((n_frames, SYMBOLS_PER_FRAME))
+        deinterleaved_erasure_flags_in_2d = np.zeros((n_frames, SYMBOLS_PER_FRAME))
+        output_2d = np.zeros((n_frames - DELAY_FRAMES, SYMBOLS_PER_FRAME))
+        erasure_flags_out_2d = np.zeros((n_frames - DELAY_FRAMES, SYMBOLS_PER_FRAME))
+        for i in range(SYMBOLS_PER_FRAME):
+            deinterleaved_input_2d[:, i] = input_2d[
+                :, AudioCD.get_new_index_interleave(i)
+            ]
+            deinterleaved_erasure_flags_in_2d[:, i] = erasure_flags_in_2d[
+                :, AudioCD.get_new_index_interleave(i)
+            ]
+
+        for i in range(SYMBOLS_PER_FRAME):
+            if ((i // 4)) % 2 == 1:
+                output_2d[:, i] = input_2d[DELAY_FRAMES:, i]
+                erasure_flags_out_2d[:, i] = deinterleaved_erasure_flags_in_2d[
+                    DELAY_FRAMES:, i
+                ]
+            else:
+                output_2d[:, i] = input_2d[:-DELAY_FRAMES, i]
+
+        output = output_2d.flatten()
+        erasure_flags_out = erasure_flags_out_2d.flatten()
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
@@ -532,7 +586,7 @@ class AudioCD:
             len(np.shape(erasure_flags_out)) == 1
             and type(erasure_flags_out) is np.ndarray
         ), "erasure_flags_out must be a 1D numpy array"
-        return (output, erasure_flags_out, n_frames)
+        return (output, erasure_flags_out, n_frames_out)
 
     def C3_enc_8_parity(self, input, n_frames):
         # Reference implementation
