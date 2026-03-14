@@ -42,7 +42,7 @@ Because the TOC is in the **Lead-in area**, it is not protected by the standard 
 
 ## 5.2 Reed-Solomon code
 
-1 Teun begint
+1 Teun bezig
 2
 
 ## 5.3 Audio encoding in CDs
