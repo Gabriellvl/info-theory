@@ -376,12 +376,21 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        # insert your code here
+        SYMBOLS_PER_FRAME = 28
+        n_frames_out = n_frames + (SYMBOLS_PER_FRAME) - 1
+        input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
+        output_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
+
+        for i in range(SYMBOLS_PER_FRAME):
+            end_index = n_frames_out - (SYMBOLS_PER_FRAME - i - 1)
+            output_2d[i:end_index, i] = input_2d[:, i]
+
+        output = output_2d.flatten()
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
-        return (output, n_frames)
+        return (output, n_frames_out)
 
     def CIRC_enc_C1(self, input, n_frames):
         # CIRC Encoder: Generation of 4 parity symbols (C1)
@@ -414,12 +423,34 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        # insert your code here
+        SYMBOLS_PER_FRAME = 32
+        DELAY_FRAMES = 1
+        n_frames_out = n_frames + 1
+        input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
+        delayed_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
+        output_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
 
+        # Delay of 1 frame
+
+        for i in range(SYMBOLS_PER_FRAME):
+            if i % 2 == 0:
+                delayed_2d[:-DELAY_FRAMES, i] = input_2d[:, i]
+            else:
+                delayed_2d[DELAY_FRAMES:, i] = input_2d[:, i]
+
+        # Inversions
+
+        for i in range(SYMBOLS_PER_FRAME):
+            if i in (12, 13, 14, 15, 28, 29, 30, 31):
+                output_2d[:, i] = 255 - (delayed_2d[:, i])  # invert
+            else:
+                output_2d[:, i] = delayed_2d[:, i]
+
+        output = output_2d.flatten()
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
-        return (output, n_frames)
+        return (output, n_frames_out)
 
     def CIRC_dec_delay_inv(self, input, n_frames):
         # CIRC Decoder: Delay of 1 frame + inversions
@@ -433,8 +464,15 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        # insert your code here
+        SYMBOLS_PER_FRAME = 24
+        DELAY_FRAMES = 2
 
+        n_frames_out = n_frames - DELAY_FRAMES
+        input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
+        deinterleaved_input_2d = np.zeros((n_frames, SYMBOLS_PER_FRAME))
+        output_2d = np.zeros((n_frames - DELAY_FRAMES, SYMBOLS_PER_FRAME))
+
+        output = output_2d.flatten()
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
@@ -484,8 +522,22 @@ class AudioCD:
             and type(erasure_flags_in) is np.ndarray
         ), "erasure_flags_in must be a 1D numpy array"
 
-        # insert your code here
+        SYMBOLS_PER_FRAME = 28
+        n_frames_out = n_frames - (SYMBOLS_PER_FRAME - 1)
+        print(f"{n_frames_out=}")
+        input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
+        erasure_flags_in_2d = erasure_flags_in.reshape(n_frames, SYMBOLS_PER_FRAME)
+        erasure_flags_out_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
+        output_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
 
+        for i in range(SYMBOLS_PER_FRAME):
+            end_index = n_frames - (SYMBOLS_PER_FRAME - i - 1)
+            print(end_index)
+            output_2d[:, i] = input_2d[i:end_index, i]
+            erasure_flags_out_2d[:, i] = erasure_flags_in_2d[i:end_index, i]
+
+        erasure_flags_out = erasure_flags_out_2d.flatten()
+        output = output_2d.flatten()
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
@@ -493,7 +545,7 @@ class AudioCD:
             len(np.shape(erasure_flags_out)) == 1
             and type(erasure_flags_out) is np.ndarray
         ), "erasure_flags_out must be a 1D numpy array"
-        return (output, erasure_flags_out, n_frames)
+        return (output, erasure_flags_out, n_frames_out)
 
     def CIRC_dec_C2(self, input, erasure_flags_in, n_frames):
         # CIRC Decoder: C2 decoder
