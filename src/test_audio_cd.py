@@ -343,4 +343,5 @@ def test_enc_dec_delay_inv():
 if __name__ == "__main__":
     # off_test_CIRC_enc_dec_C2()
     # test_enc_dec_deinterlave_delay()
+    # test_enc_dec_delay_inv()
     pytest.main([__file__] + sys.argv[1:])
