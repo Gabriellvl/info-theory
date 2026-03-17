@@ -410,9 +410,8 @@ class AudioCD:
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
         return (output, n_frames)
-
     def CIRC_enc_delay_inv(self, input, n_frames):
-        # CIRC Encoder: Delay of 1 frame + inversions
+        # CIRC Encoder: Inversions + Delay of 1 frame
         # Input:
         #  -input: the input to this block of the CIRC encoder (1D numpy array)
         #  -n_frames: the length of the input expressed in frames
@@ -427,24 +426,24 @@ class AudioCD:
         DELAY_FRAMES = 1
         n_frames_out = n_frames + 1
         input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
-        delayed_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
+        inverted_2d = np.zeros((n_frames, SYMBOLS_PER_FRAME))
         output_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
-
-        # Delay of 1 frame
-
-        for i in range(SYMBOLS_PER_FRAME):
-            if i % 2 == 0:
-                delayed_2d[:-DELAY_FRAMES, i] = input_2d[:, i]
-            else:
-                delayed_2d[DELAY_FRAMES:, i] = input_2d[:, i]
 
         # Inversions
 
         for i in range(SYMBOLS_PER_FRAME):
             if i in (12, 13, 14, 15, 28, 29, 30, 31):
-                output_2d[:, i] = 255 - (delayed_2d[:, i])  # invert
+                inverted_2d[:, i] = 255 - (input_2d[:, i])  # invert
             else:
-                output_2d[:, i] = delayed_2d[:, i]
+                inverted_2d[:, i] = input_2d[:, i]
+
+        # Delay of 1 frame
+
+        for i in range(SYMBOLS_PER_FRAME):
+            if i % 2 == 0:
+                output_2d[:-DELAY_FRAMES, i] = inverted_2d[:, i]
+            else:
+                output_2d[DELAY_FRAMES:, i] = inverted_2d[:, i]
 
         output = output_2d.flatten()
         assert (
@@ -464,19 +463,32 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        SYMBOLS_PER_FRAME = 24
-        DELAY_FRAMES = 2
+        SYMBOLS_PER_FRAME = 32
+        DELAY_FRAMES = 1
 
         n_frames_out = n_frames - DELAY_FRAMES
         input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
-        deinterleaved_input_2d = np.zeros((n_frames, SYMBOLS_PER_FRAME))
-        output_2d = np.zeros((n_frames - DELAY_FRAMES, SYMBOLS_PER_FRAME))
+        inverted_2d = np.zeros((n_frames, SYMBOLS_PER_FRAME))
+        output_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
+
+        for i in range(SYMBOLS_PER_FRAME):
+            if i in (12, 13, 14, 15, 28, 29, 30, 31):
+                inverted_2d[:, i] = 255 - (input_2d[:, i])  # invert
+            else:
+                inverted_2d[:, i] = input_2d[:, i]
+
+        for i in range(SYMBOLS_PER_FRAME):
+            if i % 2 == 0:
+                output_2d[:, i] = inverted_2d[:-DELAY_FRAMES, i]
+
+            else:
+                output_2d[:, i] = inverted_2d[DELAY_FRAMES:, i]
 
         output = output_2d.flatten()
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
-        return (output, n_frames)
+        return (output, n_frames_out)
 
     def CIRC_dec_C1(self, input, n_frames):
         # CIRC Decoder: C1 decoder
