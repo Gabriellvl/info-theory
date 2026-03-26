@@ -86,11 +86,12 @@ class AudioCD:
             value_packed = struct.pack("<h", max(min(32767, value), -32768))
             wave_object.writeframesraw(value_packed)
         wave_object.close()
-        # if bool_play:
-        #     try:
-        #         playsound(wav_file)
-        #     except:
-        #         pass
+        if bool_play:
+            try:
+                assert 0, "uncomment the following line"
+                # playsound(wav_file)
+            except:
+                pass
 
         pass
 
@@ -314,6 +315,7 @@ class AudioCD:
 
     @staticmethod
     def get_new_index_interleave(old_index):
+        """used for interleaving (encoding + decoding)"""
         SHIFT_TABLE = [0, 3, 6, 9, 1, 4, 7, 10, 2, 5, 8, 11]
         shift_table_index = old_index // 2
         double_word_shift = SHIFT_TABLE[shift_table_index]
@@ -361,8 +363,17 @@ class AudioCD:
         # Output:
         #  -output: the output of this block of the CIRC encoder (1D numpy array)
         #  -n_frames: the length of the output expressed in frames
+        assert (
+            len(np.shape(input)) == 1 and type(input) is np.ndarray
+        ), "input must be a 1D numpy array"
+        (output, n_frames_out) = self._generic_encode(
+            input, n_frames, self.rsc2, 24, 28
+        )
 
-        return self._generic_encode(input, n_frames, self.rsc2, 24, 28)
+        assert (
+            len(np.shape(output)) == 1 and type(output) is np.ndarray
+        ), "output must be a 1D numpy array"
+        return (output, n_frames_out)
 
     def CIRC_enc_delay_unequal(self, input, n_frames):
         # CIRC Encoder: Delay lines of unequal length
@@ -404,12 +415,13 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
 
-        output, n_frames = self._generic_encode(input, n_frames, self.rsc1, 28, 32)
+        output, n_frames_out = self._generic_encode(input, n_frames, self.rsc1, 28, 32)
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
         ), "output must be a 1D numpy array"
-        return (output, n_frames)
+        return (output, n_frames_out)
+
     def CIRC_enc_delay_inv(self, input, n_frames):
         # CIRC Encoder: Inversions + Delay of 1 frame
         # Input:
@@ -679,7 +691,10 @@ class AudioCD:
         ), "output must be a 1D numpy array"
         return (output, n_frames)
 
-    def pC3_dec_8_parity(self, input, n_frames):
+
+    # Original C3 decoder, unused
+    # See C3_dec_8_parity below
+    def original_C3_dec_8_parity(self, input, n_frames):
         # Configuration 3: Decoder
         # Input:
         #  -input: the input of this block (1D numpy array)
@@ -887,7 +902,7 @@ class AudioCD:
         output_symbols_per_frame,
     ):
         """
-        Generic function to encode a frame using the provided encoder
+        Generic function to encode a frame using the provided encoder, used by CIRC_enc_C1 and CIRC_enc_C2
         """
         assert (
             len(np.shape(input)) == 1 and type(input) is np.ndarray
@@ -919,6 +934,9 @@ class AudioCD:
         output_symbols_per_frame,
         erasure_flags_in=None,
     ):
+        """
+        Generic function to encode a frame using the provided encoder, used by CIRC_dec_C1, CIRC_dec_C2 and C3_dec_8_parity
+        """
         input = input.astype("B")
         output = np.zeros(int(n_frames * output_symbols_per_frame), dtype="B")
         erasure_flags_out = np.zeros(int(n_frames * output_symbols_per_frame))

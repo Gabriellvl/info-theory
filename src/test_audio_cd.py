@@ -6,7 +6,7 @@ import pytest
 
 
 def test_C3_enc_8_parity_basic():
-    """Test C3_enc_8_parity with single frame"""
+    """Tests given function"""
     audio_cd = AudioCD(Fs=44100, configuration=3, max_interpolation=8)
     n_frames = 2
     input_data = np.random.randint(0, 256, 24 * n_frames, dtype=np.uint8)
@@ -21,7 +21,8 @@ def test_C3_enc_8_parity_basic():
 
 
 def introduce_bit_errors(data, n_frames, num_bit_errors, frame_size=32):
-    """Introduce random bit errors into data"""
+    """Helper function
+    Introduces random bit errors into data"""
     corrupted_data = data.copy()
     for frame in range(n_frames):
         error_indices = np.random.choice(frame_size * 8, num_bit_errors, replace=False)
@@ -56,7 +57,6 @@ def test_C3_enc_dec_8_parity_with_bit_errors():
         print(f"Decoded Frames: {decoded_frames}")
         print(f"Number of Bit Errors: {num_bit_errors}")
 
-        # Assertions
         assert encoded_data.shape == (32 * n_frames,)
         assert encoded_frames == n_frames
         assert decoded_data.shape == (24 * n_frames,)
@@ -98,7 +98,7 @@ def test_CIRC_enc_dec_C2():
     # Encode the data
     encoded_data, encoded_frames = audio_cd.CIRC_enc_C2(input_data, n_frames)
 
-    for num_bit_errors in range(3):  # Test with 0 to 11 bit errors
+    for num_bit_errors in range(3):
         corrupted_data = encoded_data.copy()
         error_indices = np.random.choice(
             len(corrupted_data) * 8, num_bit_errors, replace=False
@@ -108,8 +108,7 @@ def test_CIRC_enc_dec_C2():
             bit_idx = idx % 8
             corrupted_data[byte_idx] ^= 1 << bit_idx  # Flip the bit
 
-        erasure_flags_in = np.zeros(28)  # No erasures for this test
-        # erasure_flags_in = None
+        erasure_flags_in = np.zeros(28)
         # Decode the corrupted data
         decoded_data, erasure_flags_out, decoded_frames = audio_cd.CIRC_dec_C2(
             corrupted_data,
@@ -126,7 +125,6 @@ def test_CIRC_enc_dec_C2():
         print(f"Decoded Frames: {decoded_frames}")
         print(f"Number of Bit Errors: {num_bit_errors}")
 
-        # Assertions
         assert encoded_data.shape == (28 * n_frames,)
         assert encoded_frames == n_frames
         assert decoded_data.shape == (24 * n_frames,)
@@ -157,7 +155,7 @@ def test_CIRC_enc_dec_C1():
     ), f"Expected (32,), got {encoded_data.shape}"
     assert encoded_frames == n_frames
 
-    for num_byte_errors in range(3):  # RS(32,28) can correct up to 2 symbol errors
+    for num_byte_errors in range(3):
         corrupted_data = encoded_data.copy()
         error_indices = np.random.choice(
             len(corrupted_data), num_byte_errors, replace=False
@@ -235,7 +233,6 @@ def test_enc_dec_deinterlave_delay():
     for f in range(n_frames_dec):
         print(f"  {f:<6}", erasure_2d[f].astype(int).tolist())
 
-    # --- CHECK: decoded should match original input (trimmed to n_frames_dec) ---
     expected = input_data[: n_frames_dec * SYMBOLS_PER_FRAME]
     assert np.array_equal(decoded, expected)
 
@@ -286,7 +283,6 @@ def test_enc_dec_delay_unequal():
     for f in range(n_frames_dec):
         print(f"  {f:<6}", erasure_2d[f].astype(int).tolist())
 
-    # --- CHECK: decoded should match original input (trimmed to n_frames_dec) ---
     expected = input_data[: n_frames_dec * SYMBOLS_PER_FRAME]
     assert np.array_equal(decoded, expected)
 
@@ -320,7 +316,6 @@ def test_enc_dec_delay_inv():
     # assert encoded_2d
 
     # --- DECODE --- use encoded output as erasure flags too
-    # erasure_flags = encoded.copy()
     decoded, n_frames_dec = audio_cd.CIRC_dec_delay_inv(encoded, n_frames_enc)
 
     print(f"\n=== DECODED ({n_frames_dec} frames x 32 symbols) ===")
@@ -328,19 +323,10 @@ def test_enc_dec_delay_inv():
     print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
     for f in range(n_frames_dec):
         print(f"  {f:<6}", decoded_2d[f].astype(int).tolist())
-
-    # print(f"\n=== ERASURE FLAGS OUT ({n_frames_dec} frames x 32 symbols) ===")
-    # erasure_2d = erasure_flags_out.reshape(n_frames_dec, SYMBOLS_PER_FRAME)
-    # print(f"{'Frame':<8}", [f"s{i:<3}" for i in range(SYMBOLS_PER_FRAME)])
-    # for f in range(n_frames_dec):
-    #     print(f"  {f:<6}", erasure_2d[f].astype(int).tolist())
-
-    # --- CHECK: decoded should match original input (trimmed to n_frames_dec) ---
     expected = input_data[: n_frames_dec * SYMBOLS_PER_FRAME]
     assert np.array_equal(decoded, expected)
 
+
 if __name__ == "__main__":
-    # off_test_CIRC_enc_dec_C2()
-    # test_enc_dec_deinterlave_delay()
-    # test_enc_dec_delay_inv()
+    # If this python file is run, all functions starting with 'test' is run using pytest
     pytest.main([__file__] + sys.argv[1:])
