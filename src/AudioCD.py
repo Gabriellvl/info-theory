@@ -153,7 +153,7 @@ class AudioCD:
             print("Invalid configuration selected")
             exit(-1)
 
-        xlrbserial = np.unpackbits(encoded, bitorder="little")
+        xlrbserial = np.unpackbits(encoded.astype(np.uint8), bitorder="little")
 
         self.cd_bits = copy.deepcopy(xlrbserial)
         self.cd_bits_original = copy.deepcopy(xlrbserial)
@@ -194,7 +194,7 @@ class AudioCD:
             audio_out = self.udecode(y)
             interpolation_flags = np.zeros(np.shape(audio_out))
         elif self.configuration == 1:  # CIRC as described in standard
-            n_frames = ylr8.size / 32
+            n_frames = ylr8.size // 32
             assert n_frames * 32 == ylr8.size
 
             (delay_inv, n_frames) = self.CIRC_dec_delay_inv(ylr8, n_frames)
@@ -237,7 +237,7 @@ class AudioCD:
             interpolation_flags[interpolation_failed.astype(bool)] = -1
 
         elif self.configuration == 2:  # Concatenated RS, no interleaving
-            n_frames = ylr8.size / 32
+            n_frames = ylr8.size // 32
             assert n_frames * 32 == ylr8.size
 
             (C1_decoded, erasure_flags, n_frames) = self.CIRC_dec_C1(ylr8, n_frames)
@@ -273,7 +273,7 @@ class AudioCD:
             interpolation_flags[interpolation_failed.astype(bool)] = -1
 
         elif self.configuration == 3:  # Single 32,24 RS
-            n_frames = ylr8.size / 32
+            n_frames = ylr8.size // 32
             assert n_frames * 32 == ylr8.size
 
             (decoded, erasure_flags, n_frames) = self.C3_dec_8_parity(ylr8, n_frames)
@@ -388,13 +388,14 @@ class AudioCD:
         ), "input must be a 1D numpy array"
 
         SYMBOLS_PER_FRAME = 28
-        n_frames_out = n_frames + (SYMBOLS_PER_FRAME) - 1
+        DELAY_STEP = 4
+        n_frames_out = n_frames + DELAY_STEP * (SYMBOLS_PER_FRAME - 1)
         input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
         output_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
 
         for i in range(SYMBOLS_PER_FRAME):
-            end_index = n_frames_out - (SYMBOLS_PER_FRAME - i - 1)
-            output_2d[i:end_index, i] = input_2d[:, i]
+            start_index = DELAY_STEP * i
+            output_2d[start_index:start_index + n_frames, i] = input_2d[:, i]
 
         output = output_2d.flatten()
 
@@ -547,18 +548,17 @@ class AudioCD:
         ), "erasure_flags_in must be a 1D numpy array"
 
         SYMBOLS_PER_FRAME = 28
-        n_frames_out = n_frames - (SYMBOLS_PER_FRAME - 1)
-        print(f"{n_frames_out=}")
+        DELAY_STEP = 4
+        n_frames_out = n_frames - DELAY_STEP * (SYMBOLS_PER_FRAME - 1)
         input_2d = input.reshape(n_frames, SYMBOLS_PER_FRAME)
         erasure_flags_in_2d = erasure_flags_in.reshape(n_frames, SYMBOLS_PER_FRAME)
         erasure_flags_out_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
         output_2d = np.zeros((n_frames_out, SYMBOLS_PER_FRAME))
 
         for i in range(SYMBOLS_PER_FRAME):
-            end_index = n_frames - (SYMBOLS_PER_FRAME - i - 1)
-            print(end_index)
-            output_2d[:, i] = input_2d[i:end_index, i]
-            erasure_flags_out_2d[:, i] = erasure_flags_in_2d[i:end_index, i]
+            start_index = DELAY_STEP * i
+            output_2d[:, i] = input_2d[start_index:start_index + n_frames_out, i]
+            erasure_flags_out_2d[:, i] = erasure_flags_in_2d[start_index:start_index + n_frames_out, i]
 
         erasure_flags_out = erasure_flags_out_2d.flatten()
         output = output_2d.flatten()
@@ -867,7 +867,7 @@ class AudioCD:
         if not typ:
             raise ValueError("sample width {} not supported".format(depth))
 
-        data = np.fromstring(sdata, dtype=typ)
+        data = np.frombuffer(sdata, dtype=typ)
         data = data / (2**15)
         ch_1 = data[0::nch]
         ch_2 = data[1::nch]
