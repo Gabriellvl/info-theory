@@ -47,9 +47,9 @@ Because the TOC is in the **Lead-in area**, it is not protected by the standard 
 
 ## 5.3 Audio encoding in CDs
 
-1 Milan mee bezig
+1 Schrijf ik (Milan) wel in het verslag
 
-2 Milan mee bezig
+2 Functies zijn geïmplementeerd
 
 3
 4
