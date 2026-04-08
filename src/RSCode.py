@@ -58,7 +58,26 @@ class RSCode:
         # Output:
         #  -generator: generator polynomial represented by a galois.Poly variable
 
-        #insert your code here
+        
+        # Finite field GF(2^m)
+        GF = galois.GF(2**m)
+
+        print(f"Making the generator polynomial with t={t} and m0={m0} in the", GF.properties)
+
+        # Primitive element of the field
+        alpha = GF.primitive_element
+        # print(f"Primitive element alpha: {alpha}")
+
+        # Start with generator = 1
+        generator = galois.Poly([1], field=GF)
+
+        # g(x) = ∏_{i=0}^{2t-1} (x - α^{m0+i}) with 2t = n-k
+        for i in range(2*t):
+            root = alpha ** (m0 + i)
+            factor = galois.Poly([1, root], field=GF)  # x + root (since char = 2)
+            generator *= factor
+                
+        print("Generator polynomial g(x):", generator)
 
         assert type(generator) == type(galois.Poly([0],field=galois.GF(2**m))), 'generator must be a galois.Poly object'
         return generator
@@ -93,3 +112,8 @@ class RSCode:
         print(nERR)
         assert((decoded[0:4,:] == msg[0:4,:]).all())
         pass
+
+if __name__ == "__main__":
+    g = RSCode.makeGenerator(m=8, t=2, m0=0)
+    print(g)
+    print(g.degree)  # moet = 2t
