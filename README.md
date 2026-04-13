@@ -1,4 +1,4 @@
-## 5.1 Audio CD Subcode.
+## 5.1 Audio CD Subcode
 
 Jasper gedaan
 
@@ -47,11 +47,11 @@ Because the TOC is in the **Lead-in area**, it is not protected by the standard 
 
 ## 5.3 Audio encoding in CDs
 
-1 Schrijf ik (Milan) wel in het verslag
+1 Done - staat in report
 
-2 Functies zijn geïmplementeerd
+2 Done - functies zijn geïmplmenteerd
 
-3
+3 Jasper
 4
 5
 6
