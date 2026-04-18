@@ -854,7 +854,7 @@ class AudioCD:
         return ylr16
 
     @staticmethod
-    def test():
+    def test(scracht_length):
         # % Test the code of this class
         wave_object = wave.open("Hallelujah.wav", "rb")
         number_frames = wave_object.getnframes()
@@ -875,7 +875,7 @@ class AudioCD:
         cd = AudioCD(Fs, 1, 8)
         cd.writeCd(audiofile)
         T_scratch = 600000  # Scratch at a diameter of approx. 66 mm
-        l_scratch = 3000
+        l_scratch = scracht_length
         for i in range(math.floor((cd.cd_bits).size / T_scratch)):
             cd.scratchCd(l_scratch, 30000 + (i) * T_scratch)
 

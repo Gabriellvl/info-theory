@@ -47,11 +47,11 @@ Because the TOC is in the **Lead-in area**, it is not protected by the standard 
 
 ## 5.3 Audio encoding in CDs
 
-1 Done - staat in report
+1 Done - staat in report (Milan)
 
-2 Done - functies zijn geïmplmenteerd
+2 Done - functies zijn geïmplmenteerd (Milan)
 
-3 Jasper
+3 Done - staat in report (jasper)
 4
 5
 6
