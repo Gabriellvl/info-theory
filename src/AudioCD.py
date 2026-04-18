@@ -850,7 +850,7 @@ class AudioCD:
 
     @staticmethod
     def typecast_16(xlr8_padded):
-        ylr16 = xlr8_padded[::2] + (2**8) * xlr8_padded[1::2]
+        ylr16 = xlr8_padded[::2].astype(np.int32) + (2**8) * xlr8_padded[1::2].astype(np.int32)
         return ylr16
 
     @staticmethod

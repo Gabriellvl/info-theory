@@ -14,6 +14,6 @@ Jasper gedaan - staat in report
 2 Done - functies zijn geïmplmenteerd (Milan)
 
 3 Done - staat in report (jasper)
-4
-5
-6
+4 Done - staat in report (jasper)
+5 Done - staat in report (jasper)
+6 Done - staat in report (jasper)
