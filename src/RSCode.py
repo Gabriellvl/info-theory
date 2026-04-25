@@ -23,6 +23,66 @@ class RSCode:
 
         #insert your code here
 
+import numpy as np
+import galois
+
+class ReedSolomon:
+    # ... your other methods ...
+
+    def encode(self, msg):
+        """
+        Systematically encodes information words using the Reed-Solomon code.
+
+        Input:
+          - msg: a 2D array of galois.GF elements, every row corresponds with a GF(2^m)
+                 information word of length self.l
+
+        Output:
+          - code: a 2D array of galois.GF elements, every row contains a GF(2^m) codeword
+                  corresponding to systematic RS coding of the corresponding information word
+        """
+        assert np.shape(msg)[1] == self.l, "the number of columns must be equal to self.l"
+
+        GF = galois.GF(2**self.m)
+
+        # Ensure msg is a GF array (this also makes your 'type(msg) is GF' assert realistic)
+        msg = GF(msg)
+
+        assert type(msg) is GF, "each element of msg must be a galois.GF element"
+
+        nsym = self.n - self.k  # number of parity symbols
+        g = self.generator      # generator polynomial (galois.Poly over GF)
+
+        n_rows = msg.shape[0]
+        code = GF.Zeros((n_rows, self.l + nsym))
+
+        for r in range(n_rows):
+            # Interpret the row as coefficients of m(x) in descending degree order:
+            # msg[r,0] is coeff of x^(l-1), ..., msg[r,l-1] is constant term.
+            m_poly = galois.Poly(msg[r, :], field=GF)
+
+            # Multiply by x^nsym -> append nsym zeros to the coefficient list (descending order)
+            m_shift = galois.Poly(np.concatenate([msg[r, :], GF.Zeros(nsym)]), field=GF)
+
+            # Remainder r(x) = m(x)*x^nsym mod g(x)
+            rem = m_shift % g
+
+            # Pad remainder to exactly nsym symbols (descending degrees nsym-1..0)
+            rem_coeffs = rem.coeffs
+            if rem_coeffs.size < nsym:
+                rem_coeffs = np.concatenate([GF.Zeros(nsym - rem_coeffs.size), rem_coeffs])
+
+            # Systematic codeword: [message | parity]
+            code[r, :] = np.concatenate([msg[r, :], rem_coeffs])
+
+        assert np.shape(code)[1] == self.l + self.n - self.k, \
+            "the number of columns must be equal to self.l+self.n-self.k"
+        assert type(code) is GF, "each element of code must be a galois.GF element"
+
+        return code
+
+        #inserted
+
         assert np.shape(code)[1] == self.l+self.n-self.k , 'the number of columns must be equal to self.l+self.n-self.k'
         assert type(code) is galois.GF(2**self.m) , 'each element of code  must be a galois.GF element'
         return code
