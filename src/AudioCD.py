@@ -981,11 +981,11 @@ class AudioCD:
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = 1
             
-            elif ERR <=1 or (decoder_number==2 and ERR==2):
+            elif ERR <=1 or (decoder_number==2 and len(erase_pos)==2):
                 output[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = output_dec
-            elif (decoder_number==2 and ERR>2):
+            elif (decoder_number==2 and len(erase_pos)>2):
                 assert erasure_flags_in is not None, "C2 decode must have erasure_flags_in defined"
                 erasure_flags_out[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
@@ -993,7 +993,7 @@ class AudioCD:
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                     ]
             else:
-                assert False, "impossible because of logic above"
+                assert False, "should be impossible to get here, because of logic above"
 
 
 
