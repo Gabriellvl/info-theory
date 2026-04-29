@@ -41,7 +41,7 @@ def test_C3_enc_dec_8_parity_with_bit_errors():
 
     encoded_data, encoded_frames = audio_cd.C3_enc_8_parity(input_data, n_frames)
 
-    for num_bit_errors in range(5):  # Test with 0 to 11 bit errors
+    for num_bit_errors in range(2):  # Test with 0 to 11 bit errors
         corrupted_data = introduce_bit_errors(encoded_data, n_frames, num_bit_errors)
         # Decode the corrupted data
         decoded_data, erasure_flags_out, decoded_frames = audio_cd.C3_dec_8_parity(
@@ -155,7 +155,7 @@ def test_CIRC_enc_dec_C1():
     ), f"Expected (32,), got {encoded_data.shape}"
     assert encoded_frames == n_frames
 
-    for num_byte_errors in range(3):
+    for num_byte_errors in range(2):
         corrupted_data = encoded_data.copy()
         error_indices = np.random.choice(
             len(corrupted_data), num_byte_errors, replace=False

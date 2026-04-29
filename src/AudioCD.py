@@ -130,24 +130,22 @@ class AudioCD:
         if self.configuration == 0:  # no CIRC
             encoded = xlr8_padded.astype("B")
         elif self.configuration == 1:  # CIRC as described in standard
-            (delay_interleaved, n_frames) = self.CIRC_enc_delay_interleave(
+            delay_interleaved, n_frames = self.CIRC_enc_delay_interleave(
                 xlr8_padded, n_frames
             )
-            (C2_encoded, n_frames) = self.CIRC_enc_C2(delay_interleaved, n_frames)
-            (delay_unequal, n_frames) = self.CIRC_enc_delay_unequal(
-                C2_encoded, n_frames
-            )
-            (C1_encoded, n_frames) = self.CIRC_enc_C1(delay_unequal, n_frames)
-            (delay_inv, n_frames) = self.CIRC_enc_delay_inv(C1_encoded, n_frames)
+            C2_encoded, n_frames = self.CIRC_enc_C2(delay_interleaved, n_frames)
+            delay_unequal, n_frames = self.CIRC_enc_delay_unequal(C2_encoded, n_frames)
+            C1_encoded, n_frames = self.CIRC_enc_C1(delay_unequal, n_frames)
+            delay_inv, n_frames = self.CIRC_enc_delay_inv(C1_encoded, n_frames)
             encoded = delay_inv
 
         elif self.configuration == 2:  # Concatenated RS, no interleaving
-            (C2_encoded, n_frames) = self.CIRC_enc_C2(xlr8_padded, n_frames)
-            (C1_encoded, n_frames) = self.CIRC_enc_C1(C2_encoded, n_frames)
+            C2_encoded, n_frames = self.CIRC_enc_C2(xlr8_padded, n_frames)
+            C1_encoded, n_frames = self.CIRC_enc_C1(C2_encoded, n_frames)
             encoded = C1_encoded
 
         elif self.configuration == 3:  # Single 32,24 RS
-            (encoded, n_frames) = self.C3_enc_8_parity(xlr8_padded, n_frames)
+            encoded, n_frames = self.C3_enc_8_parity(xlr8_padded, n_frames)
 
         else:
             print("Invalid configuration selected")
@@ -197,17 +195,15 @@ class AudioCD:
             n_frames = ylr8.size // 32
             assert n_frames * 32 == ylr8.size
 
-            (delay_inv, n_frames) = self.CIRC_dec_delay_inv(ylr8, n_frames)
-            (C1_decoded, erasure_flags, n_frames) = self.CIRC_dec_C1(
-                delay_inv, n_frames
-            )
-            (delay_unequal, erasure_flags, n_frames) = self.CIRC_dec_delay_unequal(
+            delay_inv, n_frames = self.CIRC_dec_delay_inv(ylr8, n_frames)
+            C1_decoded, erasure_flags, n_frames = self.CIRC_dec_C1(delay_inv, n_frames)
+            delay_unequal, erasure_flags, n_frames = self.CIRC_dec_delay_unequal(
                 C1_decoded, erasure_flags, n_frames
             )
-            (C2_decoded, erasure_flags, n_frames) = self.CIRC_dec_C2(
+            C2_decoded, erasure_flags, n_frames = self.CIRC_dec_C2(
                 delay_unequal, erasure_flags, n_frames
             )
-            (deinterleave_delay, erasure_flags, n_frames) = (
+            deinterleave_delay, erasure_flags, n_frames = (
                 self.CIRC_dec_deinterleave_delay(C2_decoded, erasure_flags, n_frames)
             )
 
@@ -224,10 +220,10 @@ class AudioCD:
             interpolation_failed = np.zeros(
                 np.shape(erasure_flags),
             )
-            (y[:, 0], interpolation_failed[:, 0]) = self.interpolator(
+            y[:, 0], interpolation_failed[:, 0] = self.interpolator(
                 y[:, 0], erasure_flags[:, 0]
             )  # Left
-            (y[:, 1], interpolation_failed[:, 1]) = self.interpolator(
+            y[:, 1], interpolation_failed[:, 1] = self.interpolator(
                 y[:, 1], erasure_flags[:, 1]
             )  # Right
 
@@ -240,9 +236,9 @@ class AudioCD:
             n_frames = ylr8.size // 32
             assert n_frames * 32 == ylr8.size
 
-            (C1_decoded, erasure_flags, n_frames) = self.CIRC_dec_C1(ylr8, n_frames)
+            C1_decoded, erasure_flags, n_frames = self.CIRC_dec_C1(ylr8, n_frames)
             erasure_flags_t = erasure_flags
-            (C2_decoded, erasure_flags, n_frames) = self.CIRC_dec_C2(
+            C2_decoded, erasure_flags, n_frames = self.CIRC_dec_C2(
                 C1_decoded, erasure_flags, n_frames
             )
 
@@ -260,10 +256,10 @@ class AudioCD:
 
             #  Linear Interpolation
             interpolation_failed = np.zeros(np.shape(erasure_flags))
-            (y[:, 0], interpolation_failed[:, 0]) = self.interpolator(
+            y[:, 0], interpolation_failed[:, 0] = self.interpolator(
                 y[:, 0], erasure_flags[:, 0]
             )  # Left
-            (y[:, 1], interpolation_failed[:, 1]) = self.interpolator(
+            y[:, 1], interpolation_failed[:, 1] = self.interpolator(
                 y[:, 1], erasure_flags[:, 1]
             )  # Right
 
@@ -276,7 +272,7 @@ class AudioCD:
             n_frames = ylr8.size // 32
             assert n_frames * 32 == ylr8.size
 
-            (decoded, erasure_flags, n_frames) = self.C3_dec_8_parity(ylr8, n_frames)
+            decoded, erasure_flags, n_frames = self.C3_dec_8_parity(ylr8, n_frames)
             ylr16 = self.typecast_16(decoded)
             y = np.transpose(np.reshape(ylr16, (2, -1), order="F"))
 
@@ -288,10 +284,10 @@ class AudioCD:
 
             # Linear Interpolation
             interpolation_failed = np.zeros(np.shape(erasure_flags))
-            ([y[:, 0], interpolation_failed[:, 0]]) = self.interpolator(
+            [y[:, 0], interpolation_failed[:, 0]] = self.interpolator(
                 y[:, 0], erasure_flags[:, 0]
             )  # Left
-            ([y[:, 1], interpolation_failed[:, 1]]) = self.interpolator(
+            [y[:, 1], interpolation_failed[:, 1]] = self.interpolator(
                 y[:, 1], erasure_flags[:, 1]
             )  # Right
 
@@ -366,9 +362,7 @@ class AudioCD:
         assert (
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
-        (output, n_frames_out) = self._generic_encode(
-            input, n_frames, self.rsc2, 24, 28
-        )
+        output, n_frames_out = self._generic_encode(input, n_frames, self.rsc2, 24, 28)
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
@@ -395,7 +389,7 @@ class AudioCD:
 
         for i in range(SYMBOLS_PER_FRAME):
             start_index = DELAY_STEP * i
-            output_2d[start_index:start_index + n_frames, i] = input_2d[:, i]
+            output_2d[start_index : start_index + n_frames, i] = input_2d[:, i]
 
         output = output_2d.flatten()
 
@@ -517,7 +511,7 @@ class AudioCD:
         ), "input must be a 1D numpy array"
 
         output, erasure_flags_out, n_frames_return = self._generic_decode(
-            input, n_frames, self.rsc1, 32, 28, None
+            input, n_frames, self.rsc1, 1, 32, 28, None
         )
 
         assert (
@@ -557,8 +551,10 @@ class AudioCD:
 
         for i in range(SYMBOLS_PER_FRAME):
             start_index = DELAY_STEP * i
-            output_2d[:, i] = input_2d[start_index:start_index + n_frames_out, i]
-            erasure_flags_out_2d[:, i] = erasure_flags_in_2d[start_index:start_index + n_frames_out, i]
+            output_2d[:, i] = input_2d[start_index : start_index + n_frames_out, i]
+            erasure_flags_out_2d[:, i] = erasure_flags_in_2d[
+                start_index : start_index + n_frames_out, i
+            ]
 
         erasure_flags_out = erasure_flags_out_2d.flatten()
         output = output_2d.flatten()
@@ -590,7 +586,7 @@ class AudioCD:
         ), "erasure_flags_in must be a 1D numpy array"
 
         output, erasure_flags_out, n_frames_return = self._generic_decode(
-            input, n_frames, self.rsc2, 28, 24, erasure_flags_in
+            input, n_frames, self.rsc2, 2, 28, 24, erasure_flags_in
         )
         assert n_frames_return == n_frames
         assert (
@@ -691,7 +687,6 @@ class AudioCD:
         ), "output must be a 1D numpy array"
         return (output, n_frames)
 
-
     # Original C3 decoder, unused
     # See C3_dec_8_parity below
     def original_C3_dec_8_parity(self, input, n_frames):
@@ -712,7 +707,7 @@ class AudioCD:
         erasure_flags_out = np.zeros(int(n_frames * 24))
         for i in range(int(n_frames)):
             try:
-                (decoded, _, err) = self.rsc3.decode(
+                decoded, _, err = self.rsc3.decode(
                     input[(i) * 32 : (i + 1) * 32], erase_pos=None
                 )
                 ERR = len(err)
@@ -753,7 +748,7 @@ class AudioCD:
         ), "input must be a 1D numpy array"
 
         output, erasure_flags_out, n_frames_return = self._generic_decode(
-            input, n_frames, self.rsc3, 32, 24, erasure_flags_in=None
+            input, n_frames, self.rsc3, 3, 32, 24, erasure_flags_in=None
         )
         return (output, erasure_flags_out, n_frames)
 
@@ -850,7 +845,9 @@ class AudioCD:
 
     @staticmethod
     def typecast_16(xlr8_padded):
-        ylr16 = xlr8_padded[::2].astype(np.int32) + (2**8) * xlr8_padded[1::2].astype(np.int32)
+        ylr16 = xlr8_padded[::2].astype(np.int32) + (2**8) * xlr8_padded[1::2].astype(
+            np.int32
+        )
         return ylr16
 
     @staticmethod
@@ -930,6 +927,7 @@ class AudioCD:
         input,
         n_frames,
         encoder: RSCodec,
+        decoder_number,
         input_symbols_per_frame,
         output_symbols_per_frame,
         erasure_flags_in=None,
@@ -940,6 +938,8 @@ class AudioCD:
         input = input.astype("B")
         output = np.zeros(int(n_frames * output_symbols_per_frame), dtype="B")
         erasure_flags_out = np.zeros(int(n_frames * output_symbols_per_frame))
+        if decoder_number==2:
+            assert erasure_flags_in is not None
 
         for i in range(int(n_frames)):
             # Convert erasure flag array to list of erased positions within this frame
@@ -952,16 +952,19 @@ class AudioCD:
                 erase_pos = []
 
             try:
-                (decoded, _, err) = encoder.decode(
+                
+                decoded, _, err = encoder.decode(
                     input[
                         i * input_symbols_per_frame : (i + 1) * input_symbols_per_frame
                     ],
                     erase_pos=erase_pos if erase_pos else None,
                 )
                 ERR = len(err)
+
                 output_dec = list(decoded)
                 output_dec = output_dec[-output_symbols_per_frame:]
-            except Exception as _:
+            except Exception as e:
+                print(e)
                 ERR = -1
                 output_dec = list(
                     input[
@@ -970,17 +973,29 @@ class AudioCD:
                     ]
                 )
 
-            if ERR == -1:
+            if ERR == -1 or (decoder_number!=2 and ERR>=2): # failed -> all erasures
                 output[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = output_dec
                 erasure_flags_out[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = 1
-            else:
+            
+            elif ERR <=1 or (decoder_number==2 and ERR==2):
                 output[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = output_dec
+            elif (decoder_number==2 and ERR>2):
+                assert erasure_flags_in is not None, "C2 decode must have erasure_flags_in defined"
+                erasure_flags_out[
+                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+                ] = erasure_flags_in[
+                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+                    ]
+            else:
+                assert False, "impossible because of logic above"
+
+
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
