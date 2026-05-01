@@ -50,16 +50,27 @@ def build_cd(config, audiofile, Fs):
     return cd
 
 
+def fmt_prob(val):
+    if val == 0:
+        return "0"
+    exp = math.floor(math.log10(val))
+    mantissa = val / (10 ** exp)
+    return f"{mantissa:.2f} * 10^{exp}"
+
+
 def run_scratch_trial(cd, scratch_width):
     cd.cd_bits = copy.deepcopy(cd.cd_bits_original)
     n_bits = cd.cd_bits_original.size
     for i in range(math.floor(n_bits / T_SCRATCH)):
         cd.scratchCd(scratch_width, SCRATCH_OFFSET + i * T_SCRATCH)
-    _, flags = cd.readCd()
+    audio_out, flags = cd.readCd()
     total = flags.size
     p_erasure = np.sum(flags != 0) / total
     p_fail = np.sum(flags == -1) / total
-    return p_erasure, p_fail
+    ref = cd.scaled_quantized_padded_original
+    n = min(audio_out.shape[0], ref.shape[0])
+    p_error = np.sum(audio_out[:n] != ref[:n]) / (n * audio_out.shape[1])
+    return p_erasure, p_fail, p_error
 
 
 def run_biterror_trial(cd, p):
@@ -85,9 +96,23 @@ def part_a_scratch(audiofile, Fs):
     for cfg in CONFIGS_ALL:
         for width in SCRATCH_WIDTHS:
             print(f"  [config={cfg}, scratch={width:>6} bits]", end="", flush=True)
-            p_e, p_f = run_scratch_trial(cds[cfg], width)
-            results[cfg][width] = (p_e, p_f)
-            print(f"  P(erasure)={p_e:.4f}, P(fail)={p_f:.4f}")
+            p_e, p_f, p_err = run_scratch_trial(cds[cfg], width)
+            results[cfg][width] = (p_e, p_f, p_err)
+            print(f"  P_flagged={p_e:.4e}, P_failed={p_f:.4e}, P_error={p_err:.4e}")
+
+    # Print summary table
+    col_w = 24
+    header = f"{'Scratch (bits)':<16} {'Config':<8} {'P_flagged':<{col_w}} {'P_failed':<{col_w}} {'P_error':<{col_w}}"
+    print("\n" + "=" * len(header))
+    print(header)
+    print("=" * len(header))
+    for width in SCRATCH_WIDTHS:
+        for cfg in CONFIGS_ALL:
+            p_e, p_f, p_err = results[cfg][width]
+            width_str = str(width) if cfg == CONFIGS_ALL[0] else ""
+            print(f"{width_str:<16} {cfg:<8} {fmt_prob(p_e):<{col_w}} {fmt_prob(p_f):<{col_w}} {fmt_prob(p_err):<{col_w}}")
+        print("-" * len(header))
+    print()
 
     # Grouped bar chart
     n_widths = len(SCRATCH_WIDTHS)
@@ -189,12 +214,11 @@ def main():
     print("Loading WAV file...")
     audiofile, Fs = load_audiofile(WAV_FILE)
 
-    print("\n=== Part (a): Scratch test ===")
-    part_a_scratch(audiofile, Fs)
-
     print("\n=== Part (b): Random bit error sweep ===")
     part_b_biterrors(audiofile, Fs)
 
+    print("\n=== Part (a): Scratch test ===")
+    part_a_scratch(audiofile, Fs)
     print("\nDone.")
 
 
