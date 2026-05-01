@@ -973,27 +973,30 @@ class AudioCD:
                     ]
                 )
 
-            if ERR == -1 or (decoder_number!=2 and ERR>=2): # failed -> all erasures
+            if ERR == -1 or (decoder_number!=2 and ERR>=2) or (decoder_number==2 and ERR>=2 and len(erase_pos)<=1):
+                # C1: decoder fail or 2+ errors; C2: decoder fail or 2+ errors with f<=1
                 output[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = output_dec
                 erasure_flags_out[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = 1
-            
+
             elif ERR <=1 or (decoder_number==2 and len(erase_pos)==2):
                 output[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = output_dec
             elif (decoder_number==2 and len(erase_pos)>2):
-                assert erasure_flags_in is not None, "C2 decode must have erasure_flags_in defined"
+                # f > 2: store corrected data but propagate C1 erasure flags since
+                # all parity was spent on erasures, no error detection capacity remains
+                output[
+                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+                ] = output_dec
                 erasure_flags_out[
                     i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
                 ] = erasure_flags_in[
-                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                    ]
-            else:
-                assert False, "should be impossible to get here, because of logic above"
+                    i * input_symbols_per_frame : i * input_symbols_per_frame + output_symbols_per_frame
+                ]
 
 
 
