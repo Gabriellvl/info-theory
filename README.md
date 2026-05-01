@@ -4,8 +4,8 @@ Jasper gedaan - staat in report
 
 ## 5.2 Reed-Solomon code
 
-1 Teun bezig
-2
+1 Done - staat in report (Teun)
+2 Vraagjes Done, Enkel Decode Functie nog
 
 ## 5.3 Audio encoding in CDs
 
