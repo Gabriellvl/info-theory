@@ -162,7 +162,7 @@ class AudioCD:
         # Add uniform bit errors to cd
         # Input:
         #  -p: the bit error probability, i.e., a self.cd_bits bit is flipped with probability p
-        noise = np.random.rand((self.cd_bits).shape) < p
+        noise = np.random.rand((self.cd_bits).shape[0]) < p
         self.cd_bits = np.bitwise_xor(self.cd_bits, noise.astype(int))
         return
 
@@ -363,6 +363,12 @@ class AudioCD:
             len(np.shape(input)) == 1 and type(input) is np.ndarray
         ), "input must be a 1D numpy array"
         output, n_frames_out = self._generic_encode(input, n_frames, self.rsc2, 24, 28)
+
+        # Move parity bytes from positions 24-27 to 12-15 per the CD standard.
+        # RSCodec appends parity at the end; rolling the second half right by 4 puts them in the middle.
+        output_2d = output.reshape(n_frames_out, 28).copy()
+        output_2d[:, 12:28] = np.roll(output_2d[:, 12:28], 4, axis=1)
+        output = output_2d.flatten()
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
@@ -585,8 +591,14 @@ class AudioCD:
             and type(erasure_flags_in) is np.ndarray
         ), "erasure_flags_in must be a 1D numpy array"
 
+        # Undo the encoder's parity rotation before handing to RSCodec (roll left by 4).
+        input_2d = input.reshape(n_frames, 28).copy()
+        input_2d[:, 12:28] = np.roll(input_2d[:, 12:28], -4, axis=1)
+        erasure_2d = erasure_flags_in.reshape(n_frames, 28).copy()
+        erasure_2d[:, 12:28] = np.roll(erasure_2d[:, 12:28], -4, axis=1)
+
         output, erasure_flags_out, n_frames_return = self._generic_decode(
-            input, n_frames, self.rsc2, 2, 28, 24, erasure_flags_in
+            input_2d.flatten(), n_frames, self.rsc2, 2, 28, 24, erasure_2d.flatten()
         )
         assert n_frames_return == n_frames
         assert (
@@ -951,21 +963,19 @@ class AudioCD:
             else:
                 erase_pos = []
 
+            decode_success = False
+            errata_pos = []
             try:
-                
                 decoded, _, err = encoder.decode(
                     input[
                         i * input_symbols_per_frame : (i + 1) * input_symbols_per_frame
                     ],
                     erase_pos=erase_pos if erase_pos else None,
                 )
-                ERR = len(err)
-
-                output_dec = list(decoded)
-                output_dec = output_dec[-output_symbols_per_frame:]
-            except Exception as e:
-                print(e)
-                ERR = -1
+                errata_pos = list(err)
+                output_dec = list(decoded)[-output_symbols_per_frame:]
+                decode_success = True
+            except Exception:
                 output_dec = list(
                     input[
                         i * input_symbols_per_frame : i * input_symbols_per_frame
@@ -973,32 +983,37 @@ class AudioCD:
                     ]
                 )
 
-            if ERR == -1 or (decoder_number!=2 and ERR>=2) or (decoder_number==2 and ERR>=2 and len(erase_pos)<=1):
-                # C1: decoder fail or 2+ errors; C2: decoder fail or 2+ errors with f<=1
-                output[
-                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = output_dec
-                erasure_flags_out[
-                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = 1
+            output[
+                i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+            ] = output_dec
 
-            elif ERR <=1 or (decoder_number==2 and len(erase_pos)==2):
-                output[
-                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = output_dec
-            elif (decoder_number==2 and len(erase_pos)>2):
-                # f > 2: store corrected data but propagate C1 erasure flags since
-                # all parity was spent on erasures, no error detection capacity remains
-                output[
-                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = output_dec
-                erasure_flags_out[
-                    i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
-                ] = erasure_flags_in[
-                    i * input_symbols_per_frame : i * input_symbols_per_frame + output_symbols_per_frame
-                ]
-
-
+            if decoder_number == 1:
+                if not decode_success or len(errata_pos) >= 2:
+                    erasure_flags_out[
+                        i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+                    ] = 1
+            elif decoder_number == 2:
+                f = len(erase_pos)
+                detected_errors = sum(1 for pos in errata_pos if pos not in set(erase_pos))
+                if decode_success and detected_errors <= 1:
+                    pass
+                elif f > 2:
+                    erasure_flags_out[
+                        i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+                    ] = erasure_flags_in[
+                        i * input_symbols_per_frame : i * input_symbols_per_frame + output_symbols_per_frame
+                    ]
+                elif f == 2 and decode_success:
+                    pass
+                else:
+                    erasure_flags_out[
+                        i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+                    ] = 1
+            elif decoder_number == 3:
+                if not decode_success:
+                    erasure_flags_out[
+                        i * output_symbols_per_frame : (i + 1) * output_symbols_per_frame
+                    ] = 1
 
         assert (
             len(np.shape(output)) == 1 and type(output) is np.ndarray
@@ -1007,5 +1022,4 @@ class AudioCD:
             len(np.shape(erasure_flags_out)) == 1
             and type(erasure_flags_out) is np.ndarray
         ), "erasure_flags_out must be a 1D numpy array"
-        print("Erasure flags in this frame: ", erasure_flags_out)
         return (output, erasure_flags_out, n_frames)
